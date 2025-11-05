@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Observatorio CITE - Ejemplo</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <style>
+    body { margin:0; font-family: Arial, Helvetica, sans-serif; }
+    #map { position: absolute; top: 0; bottom: 0; right: 0; left: 320px; }
+    #sidebar { position: absolute; left: 0; top: 0; bottom: 0; width: 320px; padding: 14px; background: #f9f9f9; overflow:auto; box-shadow: 2px 0 6px rgba(0,0,0,0.1); }
+    h2 { margin-top: 0; color:#1e3d59; }
+    select, button { width:100%; padding:8px; margin-bottom:8px; }
+    .cite-item { border-bottom:1px solid #ddd; padding:8px 0; cursor:pointer; }
+    .cite-item:hover { background:#eef; }
+    .small { font-size:12px; color:#666; }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <h2>Observatorio CITE (Demo)</h2>
+    <select id="regionSelect"><option value="*">Todas las regiones</option></select>
+    <select id="sectorSelect"><option value="*">Todos los sectores</option></select>
+    <button id="resetBtn">Restablecer filtros</button>
+    <div id="list"></div>
+  </div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script>
+    const cites = [
+      {Nombre:"CITE Agroindustrial Arequipa",Tipo:"Público",Sector:"Agroindustrial",Region:"Arequipa",Lat:-16.3989,Lon:-71.5350,Servicios:"Procesamiento de alimentos, innovación"},
+      {Nombre:"CITE Pesquero Chimbote",Tipo:"Público",Sector:"Pesquero",Region:"Áncash",Lat:-9.0700,Lon:-78.5930,Servicios:"Procesamiento de pescado, calidad"},
+      {Nombre:"CITE Textil Gamarra",Tipo:"Privado",Sector:"Textil",Region:"Lima",Lat:-12.061,Lon:-77.033,Servicios:"Diseño, confección, capacitación"},
+      {Nombre:"CITE Forestal Ucayali",Tipo:"Público",Sector:"Forestal",Region:"Ucayali",Lat:-8.383,Lon:-74.539,Servicios:"Manejo sostenible, transformación"},
+      {Nombre:"CITE Cuero y Calzado Trujillo",Tipo:"Privado",Sector:"Manufactura",Region:"La Libertad",Lat:-8.115,Lon:-79.029,Servicios:"Diseño, producción, innovación"},
+      {Nombre:"CITE Agroindustrial San Martín",Tipo:"Público",Sector:"Agroindustrial",Region:"San Martín",Lat:-6.49,Lon:-76.36,Servicios:"Control de calidad, innovación"},
+      {Nombre:"CITE Minero Cusco",Tipo:"Privado",Sector:"Minería",Region:"Cusco",Lat:-13.52,Lon:-71.97,Servicios:"Tecnología y desarrollo minero"},
+      {Nombre:"CITE Energía Lima",Tipo:"Público",Sector:"Energía",Region:"Lima",Lat:-12.08,Lon:-77.05,Servicios:"Energías renovables, investigación"}
+    ];
+
+    const colors = {"Agroindustrial":"#4caf50","Pesquero":"#2196f3","Textil":"#9c27b0","Forestal":"#795548","Manufactura":"#ff9800","Minería":"#607d8b","Energía":"#e91e63"};
+
+    const map = L.map('map').setView([-9.2, -75.1], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(map);
+
+    const markers = L.markerClusterGroup();
+
+    function crearMarcadores(data){
+      markers.clearLayers();
+      data.forEach(c => {
+        const marker = L.circleMarker([c.Lat, c.Lon], {
+          radius:8,
+          color:'#333',
+          fillColor:colors[c.Sector]||'#888',
+          fillOpacity:0.9
+        }).bindPopup(`<b>${c.Nombre}</b><br>${c.Region}<br><i>${c.Sector}</i><br>${c.Servicios}`);
+        markers.addLayer(marker);
+      });
+      map.addLayer(markers);
+    }
+
+    function actualizarLista(data){
+      const list = document.getElementById('list');
+      list.innerHTML = '';
+      data.forEach(c => {
+        const el = document.createElement('div');
+        el.className = 'cite-item';
+        el.innerHTML = `<b>${c.Nombre}</b><div class='small'>${c.Region} - ${c.Sector}</div>`;
+        el.onclick = () => map.setView([c.Lat, c.Lon], 10);
+        list.appendChild(el);
+      });
+    }
+
+    function poblarFiltros(){
+      const regiones = [...new Set(cites.map(c => c.Region))];
+      const sectores = [...new Set(cites.map(c => c.Sector))];
+      const regionSel = document.getElementById('regionSelect');
+      const sectorSel = document.getElementById('sectorSelect');
+      regiones.forEach(r => regionSel.innerHTML += `<option value='${r}'>${r}</option>`);
+      sectores.forEach(s => sectorSel.innerHTML += `<option value='${s}'>${s}</option>`);
+    }
+
+    function aplicarFiltros(){
+      const reg = document.getElementById('regionSelect').value;
+      const sec = document.getElementById('sectorSelect').value;
+      const filtrados = cites.filter(c => (reg==='*'||c.Region===reg)&&(sec==='*'||c.Sector===sec));
+      crearMarcadores(filtrados);
+      actualizarLista(filtrados);
+    }
+
+    document.getElementById('regionSelect').onchange = aplicarFiltros;
+    document.getElementById('sectorSelect').onchange = aplicarFiltros;
+    document.getElementById('resetBtn').onclick = ()=>{document.getElementById('regionSelect').value='*';document.getElementById('sectorSelect').value='*';aplicarFiltros();};
+
+    poblarFiltros();
+    crearMarcadores(cites);
+    actualizarLista(cites);
+  </script>
+</body>
+</html>
